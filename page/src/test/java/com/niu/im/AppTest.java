@@ -1,4 +1,4 @@
-package com.niu;
+package com.niu.im;
 
 import static org.junit.Assert.assertTrue;
 

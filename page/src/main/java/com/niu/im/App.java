@@ -1,4 +1,4 @@
-package com.niu;
+package com.niu.im;
 
 /**
  * Hello world!

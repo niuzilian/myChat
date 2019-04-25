@@ -1,4 +1,4 @@
-package com.niu.tcp;
+package com.niu.im.tcp;
 
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.eventbus.EventBus;
@@ -15,13 +15,10 @@ import io.vertx.core.parsetools.RecordParser;
  **/
 public class TcpClient extends AbstractVerticle {
 
-    private EventBus eb;
 
     @Override
     public void start() throws Exception {
         super.start();
-
-        eb = vertx.eventBus();
         NetClientOptions options = new NetClientOptions();
 
         options.setConnectTimeout(1000);
@@ -30,18 +27,14 @@ public class TcpClient extends AbstractVerticle {
 
         netClient.connect(8082, "localhost", socket -> {
             if (socket.succeeded()) {
-                System.out.println("链接成功");
+                System.out.println("tcp 客户端链接成功");
                 NetSocket netSocket = socket.result();
-                netSocket.handler(buffer -> {
-                    System.out.println("我是客户端：" + buffer.toString());
-                });
-                for (int i = 0; i < 10; i++) {
-                    netSocket.write("" + i);
-                    netSocket.write("\n\n");
-                    netSocket.write("");
-                }
+                netSocket.handler(buff-> System.out.println(buff));
+                netSocket.write("第一次发送消息");
+                netClient.close();
             } else {
                 System.out.println("链接失败 " + socket.cause());
+
             }
         });
     }

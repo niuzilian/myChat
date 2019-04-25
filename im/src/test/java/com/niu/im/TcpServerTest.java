@@ -1,12 +1,10 @@
-package com.niu;
+package com.niu.im;
 
-import com.niu.tcp.TcpServer;
+import com.niu.im.tcp.TcpServer;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Vertx;
-import io.vertx.core.eventbus.DeliveryOptions;
 import io.vertx.core.json.JsonObject;
-import org.junit.Test;
 
 import java.io.*;
 

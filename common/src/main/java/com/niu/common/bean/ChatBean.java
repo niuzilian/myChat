@@ -1,4 +1,4 @@
-package com.niu.bean;
+package com.niu.common.bean;
 
 import lombok.Data;
 

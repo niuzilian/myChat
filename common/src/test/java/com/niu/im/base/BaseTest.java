@@ -1,4 +1,4 @@
-package com.niu.base;
+package com.niu.im.base;
 
 import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.EventBus;

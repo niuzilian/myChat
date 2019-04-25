@@ -1,8 +1,8 @@
-package com.niu;
-
-import static org.junit.Assert.assertTrue;
+package com.niu.im;
 
 import org.junit.Test;
+
+import static org.junit.Assert.assertTrue;
 
 /**
  * Unit test for simple App.
