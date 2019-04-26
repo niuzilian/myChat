@@ -1,20 +1,26 @@
 package com.niu.im.status;
 
-import com.niu.common.bean.ChatBean;
-import com.niu.common.bean.LoginBean;
+import com.fasterxml.jackson.databind.ser.Serializers;
+import com.niu.common.bean.BaseEntity;
+import com.niu.common.bean.ChatEntity;
+import com.niu.common.bean.LoginEntity;
 import com.niu.common.constants.CmdEnum;
 import com.niu.common.util.Result;
-import com.niu.im.tcp.TcpServer;
+import com.niu.common.util.TrasfBufferUtil;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
+import io.vertx.core.buffer.Buffer;
 import io.vertx.core.eventbus.DeliveryOptions;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.eventbus.Message;
+import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.net.Socket;
 
 
 /**
@@ -55,61 +61,70 @@ public class MessageVerticle extends AbstractVerticle {
         CmdEnum cmdEnum = CmdEnum.getCmdBycode(cmd);
         switch (cmdEnum) {
             case LOGIN:
+                LoginEntity loginEntity = new LoginEntity();
+                loginEntity.setHandler(msg.getString("handlerId"));
+                loginEntity.setUserId(msg.getInteger("userId"));
+                dologin(loginEntity);
                 break;
             case LOGOUT:
                 break;
             case HEARTBEAT:
                 break;
             case SEND:
+                ChatEntity chat = new ChatEntity();
+                chat.setFromId(msg.getInteger("fromId"));
+                chat.setToId(msg.getInteger("toId"));
+                chat.setContent(msg.getString("content"));
+                sendMsg(chat);
                 break;
             default:
                 break;
         }
     }
 
-
-    private void setHandlerId(LoginBean loginBean) {
+    private void dologin(LoginEntity loginBean) {
         JsonObject param = JsonObject.mapFrom(loginBean);
-        Future.<Message<JsonObject>>future(logFut ->
+        Future.<Message<Result>>future(logFut ->
                 ebSend(param, SocketSession.Action.SET_USER_SOCKET, SocketSession.class.getName(), logFut)
-        ).compose(sendFut -> {
-            //TODO 发送给客户端回执 直接send HeadlerId 即可
-           return  Future.future(v->{});
+        ).compose(res -> {
+            if (res.body().isSuccess) {
+                BaseEntity baseEntity = new BaseEntity();
+                baseEntity.setCmd(CmdEnum.LOGIN_ACK);
+                Buffer bf = TrasfBufferUtil.toBuff(baseEntity);
+                logger.debug("send login_ack to client userId:{},handlerId:{}", loginBean.getUserId(), loginBean.getHandler());
+                return Future.future(v -> eb.send(loginBean.getHandler(), bf));
+            } else {
+                logger.error("save handlerId fail userId:{} handlerId:{}", loginBean.getUserId(), loginBean.getHandler());
+                return Future.future();
+            }
         });
-
     }
 
-    private void ebSend(JsonObject param, String action, String adress, Handler<AsyncResult<Message<JsonObject>>> handler) {
+    private void sendMsg(ChatEntity chatMsg) {
+        Future.<Message<Result>>future(f -> {
+            JsonObject query_param = new JsonObject();
+            query_param.put("userId", chatMsg.getToId());
+            ebSend(query_param, SocketSession.Action.GET_HANDLERID_BY_USERID, Socket.class.getName(), f);
+        }).compose(queryRes -> {
+            Result result = queryRes.body();
+            if (result.isSuccess) {
+                String handlerId = (String) result.getData();
+                BaseEntity baseEntity = new BaseEntity();
+                baseEntity.setCmd(CmdEnum.SEND);
+                baseEntity.setBody(JsonObject.mapFrom(chatMsg));
+                logger.debug("userId={} send a msg to userId={}", chatMsg.getFromId(), chatMsg.getToId());
+                return Future.future(f -> eb.send(handlerId, TrasfBufferUtil.toBuff(baseEntity)));
+            } else {
+                logger.error("send msg is fail chatMsg=" + Json.encode(chatMsg));
+                return Future.future();
+            }
+        });
+    }
+
+    private void ebSend(JsonObject param, String action, String adress, Handler<AsyncResult<Message<Result>>> handler) {
         DeliveryOptions options = new DeliveryOptions();
         options.addHeader("action", action);
         options.setSendTimeout(3000);
         eb.send(adress, param, options, handler);
-    }
-
-    private void sendMsg(ChatBean chatMsg) {
-        DeliveryOptions options = new DeliveryOptions();
-        options.setSendTimeout(3000);
-        options.addHeader("action", SocketSession.Action.GET_HANDLERID_BY_USERID);
-        JsonObject query_param = new JsonObject();
-        query_param.put("userId", chatMsg.getToId());
-        eb.<JsonObject>send(SocketSession.class.getName(), query_param, res -> {
-            if (res.succeeded()) {
-                Result result = res.result().body().mapTo(Result.class);
-                if (result.isSuccess) {
-                    String handlerId = (String) result.getData();
-                    eb.send(handlerId, JsonObject.mapFrom(chatMsg), sendRes -> {
-                        if (sendRes.succeeded()) {
-                            logger.info("send success " + JsonObject.mapFrom(chatMsg));
-                        } else {
-                            System.out.println("send fail " + JsonObject.mapFrom(chatMsg));
-                        }
-                    });
-                } else {
-                    System.out.println("get handle return fail " + result.getMsg());
-                }
-            } else {
-                System.out.println("get handlerId fail" + res.cause());
-            }
-        });
     }
 }

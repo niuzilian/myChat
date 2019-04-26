@@ -9,8 +9,7 @@ import lombok.Data;
  * @create: 2019-04-24 18:59
  **/
 @Data
-public class LoginBean {
-    private Integer cmd;
+public class LoginEntity {
     private Integer userId;
     private String handler;
 }

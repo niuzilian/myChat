@@ -4,7 +4,7 @@ package com.niu.common.constants;
  * command
  */
 public enum CmdEnum {
-   LOGIN(1000,"登录"),LOGOUT(1100,"登出"),HEARTBEAT(1200,"心跳"),SEND(1300,"发消息");
+   LOGIN(1000,"登录"),LOGIN_ACK(1010,"登录确认"),LOGOUT(1100,"登出"),HEARTBEAT(1200,"心跳"),SEND(1300,"发消息");
    private int code;
    private String msg;
 

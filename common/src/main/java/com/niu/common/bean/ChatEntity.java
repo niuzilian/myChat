@@ -9,7 +9,7 @@ import lombok.Data;
  * @create: 2019-03-31 16:14
  **/
 @Data
-public class ChatBean {
+public class ChatEntity {
     /**
      * 发起方
      */

@@ -1,4 +1,4 @@
-package com.niu.common.com.niu;
+package com.niu;
 
 
 import io.vertx.core.DeploymentOptions;

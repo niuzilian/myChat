@@ -7,10 +7,10 @@ bodyLength   消息体长度    4byte   表示消息体的长度 json string
 
 符合chatBean 格式的消息体
 
-cmd 0  登录
-cmd 1  登出
-cmd 2  心跳 作用维持链接状态
-cmd 3  聊天信息
+cmd 1000  登录
+cmd 1100  登出
+cmd 1200  心跳 作用维持链接状态
+cmd 1300  聊天信息
 
 
 
