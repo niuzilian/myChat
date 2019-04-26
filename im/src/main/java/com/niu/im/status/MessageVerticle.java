@@ -94,9 +94,16 @@ public class MessageVerticle extends AbstractVerticle {
                 logger.debug("send login_ack to client userId:{},handlerId:{}", loginBean.getUserId(), loginBean.getHandler());
                 return Future.future(v -> eb.send(loginBean.getHandler(), bf));
             } else {
-                logger.error("save handlerId fail userId:{} handlerId:{}", loginBean.getUserId(), loginBean.getHandler());
+                logger.error("save handlerId fail userId:{} handlerId:{} failMsg:{}", loginBean.getUserId(), loginBean.getHandler(), res.body().getMsg());
                 return Future.future();
             }
+        }).setHandler(res -> {
+            if (res.succeeded()) {
+                logger.debug("login success userId:{}", loginBean.getUserId());
+            } else {
+                logger.error("login success userId:{}", loginBean.getUserId());
+            }
+
         });
     }
 
@@ -115,9 +122,16 @@ public class MessageVerticle extends AbstractVerticle {
                 logger.debug("userId={} send a msg to userId={}", chatMsg.getFromId(), chatMsg.getToId());
                 return Future.future(f -> eb.send(handlerId, TrasfBufferUtil.toBuff(baseEntity)));
             } else {
-                logger.error("send msg is fail chatMsg=" + Json.encode(chatMsg));
+                logger.error("send msg is fail chatMsg=" + Json.encode(chatMsg) + " failMsg=" + result.getMsg());
                 return Future.future();
             }
+        }).setHandler(res -> {
+            if (res.succeeded()) {
+                logger.debug("chat msg send success chatMsg:{}", Json.encode(chatMsg));
+            } else {
+                logger.error("chat msg send fail chatMsg:{}", Json.encode(chatMsg));
+            }
+
         });
     }
 
