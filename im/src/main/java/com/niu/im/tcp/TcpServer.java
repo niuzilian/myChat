@@ -4,6 +4,7 @@ import com.niu.common.constants.CmdEnum;
 import com.niu.common.util.IntUtil;
 import com.niu.im.status.MessageVerticle;
 import com.niu.im.status.SocketSession;
+import com.sun.scenario.effect.impl.sw.sse.SSEBlend_SRC_OUTPeer;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Handler;
 import io.vertx.core.buffer.Buffer;
@@ -12,9 +13,13 @@ import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.net.NetServer;
 import io.vertx.core.net.NetServerOptions;
+import io.vertx.core.net.SocketAddress;
 import io.vertx.core.parsetools.RecordParser;
+import org.omg.Messaging.SYNC_WITH_TRANSPORT;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import javax.swing.plaf.basic.BasicButtonUI;
 
 /**
  * @program: myChat
@@ -23,7 +28,7 @@ import org.slf4j.LoggerFactory;
  * @create: 2019-03-31 15:01
  **/
 public class TcpServer extends AbstractVerticle {
-    Logger logger = LoggerFactory.getLogger(TcpServer.class.getName());
+    private static final Logger logger = LoggerFactory.getLogger(TcpServer.class.getName());
     private EventBus eb;
 
     @Override
@@ -41,16 +46,19 @@ public class TcpServer extends AbstractVerticle {
             //socket 主线ID
             String handlerID = socket.writeHandlerID();
 
-            String remoteAddress = socket.remoteAddress().host();
+            SocketAddress socketAddress = socket.remoteAddress();
+
+            logger.info("get connection  remote address is "+socketAddress.host()+" port="+socketAddress.port() +"handler id is "+handlerID);
 
             RecordParser parser = RecordParser.newFixed(8, null);
 
             parser.setOutput(new Handler<Buffer>() {
                 int cmd = -1;
                 int bodyLength = -1;
-
+                int count =0;
                 @Override
                 public void handle(Buffer buffer) {
+                    count++;
                     if (bodyLength == -1) {
                         cmd = IntUtil.byteArr2Int(buffer.getBytes(0, 4));
                         if (CmdEnum.checkCmd(cmd)) {
@@ -58,15 +66,18 @@ public class TcpServer extends AbstractVerticle {
                             parser.fixedSizeMode(bodyLength);
                         } else {
                             bodyLength = -2;
-                            logger.error("Illegal CMD code remote ip is:{}", remoteAddress);
+                            logger.error("Illegal CMD code remote ip is:{},handlerId:{}", socketAddress.host(),handlerID);
                         }
                     } else if (bodyLength == -2) {
-                        logger.error("Illegal CMD code remote ip is:{}, body is :{}", remoteAddress, buffer.toString());
+                        logger.error("Illegal CMD code remote ip is:{}, body is :{}, handlerId:{}", socketAddress.host(), buffer.toString(),handlerID);
                     } else {
                         try {
                             JsonObject msg = new JsonObject(buffer);
                             msg.put("cmd",cmd);
                             msg.put("handerId",handlerID);
+                            logger.info("The body of the received message is {}",msg.toString());
+                            bodyLength=-1;
+                            parser.fixedSizeMode(8);
                             dealMsg(msg);
                         } catch (Exception e) {
                             logger.error("Illegal message body body is :{}", buffer.toString());
@@ -76,8 +87,13 @@ public class TcpServer extends AbstractVerticle {
             });
             //读取数据
             socket.handler(parser);
-            socket.exceptionHandler(v -> delSocket(handlerID));
-            socket.closeHandler(v -> delSocket(handlerID));
+            socket.exceptionHandler(v ->{
+                logger.info("socket 被异常关闭了");
+
+                });
+            socket.closeHandler(v ->{
+                logger.info("socket 被关闭了");
+               });
         });
         server.listen(res -> {
             if (res.succeeded()) {

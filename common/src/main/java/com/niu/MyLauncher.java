@@ -3,6 +3,7 @@ package com.niu;
 
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Launcher;
+import io.vertx.core.VertxOptions;
 import io.vertx.core.json.JsonObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,8 +22,16 @@ public class MyLauncher extends Launcher {
 
 
     public static void main(String[] args) {
-        new Launcher().dispatch(args);
+
+       new MyLauncher().dispatch(args);
     }
+
+    @Override
+    public void beforeStartingVertx(VertxOptions options) {
+        logger.debug("-------------------start chat server---------------------------------------");
+        super.beforeStartingVertx(options);
+    }
+
     @Override
     public void beforeDeployingVerticle(DeploymentOptions deploymentOptions) {
         super.beforeDeployingVerticle(deploymentOptions);
@@ -30,7 +39,7 @@ public class MyLauncher extends Launcher {
             deploymentOptions.setConfig(new JsonObject());
         }
         String config = System.getProperty("config", "");
-        JsonObject resourceConf= getConfig(config + File.pathSeparator + "config.json");
+        JsonObject resourceConf= getConfig(config + File.separator + "config.json");
         deploymentOptions.getConfig().mergeIn(resourceConf);
     }
 
@@ -41,7 +50,7 @@ public class MyLauncher extends Launcher {
             //转换成文本流
             BufferedReader br=new BufferedReader(new InputStreamReader(resourceStream));
             StringBuilder sb = new StringBuilder();
-            String line=null;
+            String line;
             while ((line=br.readLine())!=null) {
                 sb.append(line);
             }

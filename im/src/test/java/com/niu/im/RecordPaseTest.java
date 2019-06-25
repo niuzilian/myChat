@@ -40,6 +40,7 @@ public class RecordPaseTest {
                         System.out.println("bodyLength="+bodyLength);
 
                         String content=buffer.toString();
+                        System.out.println();
                         System.out.println(content.substring(0, headLength));
                         System.out.println(content.substring(headLength, bodyLength+headLength));
 

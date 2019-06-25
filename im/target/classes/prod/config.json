@@ -1,0 +1,4 @@
+{
+  "tcp.port":8082,
+  "tcp.idleTimeout":3600
+}

@@ -59,27 +59,32 @@ public class MessageVerticle extends AbstractVerticle {
     public void dealMsg(JsonObject msg) {
         Integer cmd = msg.getInteger("cmd");
         CmdEnum cmdEnum = CmdEnum.getCmdBycode(cmd);
-        switch (cmdEnum) {
-            case LOGIN:
-                LoginEntity loginEntity = new LoginEntity();
-                loginEntity.setHandler(msg.getString("handlerId"));
-                loginEntity.setUserId(msg.getInteger("userId"));
-                dologin(loginEntity);
-                break;
-            case LOGOUT:
-                break;
-            case HEARTBEAT:
-                break;
-            case SEND:
-                ChatEntity chat = new ChatEntity();
-                chat.setFromId(msg.getInteger("fromId"));
-                chat.setToId(msg.getInteger("toId"));
-                chat.setContent(msg.getString("content"));
-                sendMsg(chat);
-                break;
-            default:
-                break;
+        if(cmdEnum!=null){
+            switch (cmdEnum) {
+                case LOGIN:
+                    LoginEntity loginEntity = new LoginEntity();
+                    loginEntity.setHandler(msg.getString("handlerId"));
+                    loginEntity.setUserId(msg.getInteger("userId"));
+                    dologin(loginEntity);
+                    break;
+                case LOGOUT:
+                    break;
+                case HEARTBEAT:
+                    break;
+                case SEND:
+                    ChatEntity chat = new ChatEntity();
+                    chat.setFromId(msg.getInteger("fromId"));
+                    chat.setToId(msg.getInteger("toId"));
+                    chat.setContent(msg.getString("content"));
+                    sendMsg(chat);
+                    break;
+                default:
+                    break;
+            }
+        }else{
+            logger.error("cmd is error; cmd="+cmd);
         }
+
     }
 
     private void dologin(LoginEntity loginBean) {

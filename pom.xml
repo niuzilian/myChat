@@ -57,30 +57,7 @@
             <version>1.1.7</version>
         </dependency>
     </dependencies>
-    <!-- 多环境配置BEGIN -->
-    <profiles>
-        <profile>
-            <id>local</id>
-            <properties>
-                <config>local</config>
-            </properties>
-            <activation>
-                <activeByDefault>true</activeByDefault>
-            </activation>
-        </profile>
-        <profile>
-            <id>dev</id>
-            <properties>
-                <config>dev</config>
-            </properties>
-        </profile>
-        <profile>
-            <id>prod</id>
-            <properties>
-                <config>prod</config>
-            </properties>
-        </profile>
-    </profiles>
+
     <build>
         <plugins>
             <plugin>

@@ -4,6 +4,8 @@ import com.niu.common.util.Result;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.json.JsonObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -15,6 +17,7 @@ import java.util.Map;
  * @create: 2019-04-10 13:39
  **/
 public class SocketSession extends AbstractVerticle {
+    private static final Logger logger= LoggerFactory.getLogger(SocketSession.class);
     private EventBus eb;
     private Map<Integer, String> sessionMap = new HashMap();
     private Map<String, Integer> sessionReverse = new HashMap<>();
@@ -63,7 +66,7 @@ public class SocketSession extends AbstractVerticle {
         this.sessionReverse.put(handlerId, userId);
         counter++;
         recounter++;
-        System.out.println("set userSocket success userId="+userId+" handlerId="+handlerId+" counter="+counter+" recounter="+recounter);
+        logger.info("set userSocket success userId="+userId+" handlerId="+handlerId+" counter="+counter+" recounter="+recounter);
         return Result.success(null);
     }
 
@@ -72,12 +75,12 @@ public class SocketSession extends AbstractVerticle {
             //login out
             this.sessionMap.remove(userId);
             this.sessionReverse.remove(handlerId);
-            System.out.println("login out userId="+userId+"handlerId="+handlerId);
+            logger.info("login out userId="+userId+"handlerId="+handlerId);
         } else {
             //socket close
             userId = this.sessionReverse.get(handlerId);
             sessionMap.remove(userId);
-            System.out.println("socket close userId="+userId+"handlerId="+handlerId);
+            logger.info("socket close userId="+userId+"handlerId="+handlerId);
         }
         counter--;
         counter--;
