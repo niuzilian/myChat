@@ -1,10 +1,4 @@
-package com.niu.common.util;
-
-import io.vertx.core.json.Json;
-import org.apache.commons.lang3.ArrayUtils;
-
-import java.util.ArrayList;
-import java.util.Arrays;
+package com.niu.page.socket.util;
 
 /**
  * @program: myChat
@@ -12,7 +6,7 @@ import java.util.Arrays;
  * @author: niuzilian
  * @create: 2019-04-13 17:36
  **/
-public class IntUtil {
+public final class IntUtil {
     /**
      * 将整数转换成字节数组
      */
@@ -33,14 +27,5 @@ public class IntUtil {
                 | (arr[1] & 0xff) << 16
                 | (arr[2] & 0xff) << 8
                 | (arr[3] & 0xff) << 0;
-    }
-
-
-    public static void main(String[] args) {
-        byte[] bytes = int2ByteArr(50);
-        for(int i=0;i<bytes.length;i++){
-            System.out.println(bytes[i]);
-
-        }
     }
 }

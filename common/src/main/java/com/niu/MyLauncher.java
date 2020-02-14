@@ -23,6 +23,7 @@ public class MyLauncher extends Launcher {
 
     public static void main(String[] args) {
 
+
        new MyLauncher().dispatch(args);
     }
 
@@ -38,7 +39,8 @@ public class MyLauncher extends Launcher {
         if (deploymentOptions == null) {
             deploymentOptions.setConfig(new JsonObject());
         }
-        String config = System.getProperty("config", "");
+        //启动参数中没有指定环境，默认启动开发环境
+        String config = System.getProperty("config", "dev");
         JsonObject resourceConf= getConfig(config + File.separator + "config.json");
         deploymentOptions.getConfig().mergeIn(resourceConf);
     }
@@ -62,4 +64,6 @@ public class MyLauncher extends Launcher {
             return new JsonObject();
         }
     }
+
+
 }

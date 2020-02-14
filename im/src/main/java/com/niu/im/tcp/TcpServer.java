@@ -1,31 +1,28 @@
 package com.niu.im.tcp;
 
+import com.niu.common.bean.ChatEntity;
 import com.niu.common.constants.CmdEnum;
 import com.niu.common.util.IntUtil;
-import com.niu.im.status.MessageVerticle;
-import com.niu.im.status.SocketSession;
-import com.sun.scenario.effect.impl.sw.sse.SSEBlend_SRC_OUTPeer;
+import com.niu.common.web.Response;
+import com.niu.common.web.RestCode;
+import com.niu.im.EventBusUtil;
+import com.niu.im.service.SocketSession;
 import io.vertx.core.AbstractVerticle;
-import io.vertx.core.Handler;
-import io.vertx.core.buffer.Buffer;
-import io.vertx.core.eventbus.DeliveryOptions;
+import io.vertx.core.Future;
 import io.vertx.core.eventbus.EventBus;
+import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.net.NetServer;
 import io.vertx.core.net.NetServerOptions;
 import io.vertx.core.net.SocketAddress;
-import io.vertx.core.parsetools.RecordParser;
-import org.omg.Messaging.SYNC_WITH_TRANSPORT;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.swing.plaf.basic.BasicButtonUI;
-
 /**
- * @program: myChat
+ * @program:myChat
  * @description:tcp服务
- * @author: niuzilian
- * @create: 2019-03-31 15:01
+ * @author:niuzilian
+ * @create:2019-03-31 15:01
  **/
 public class TcpServer extends AbstractVerticle {
     private static final Logger logger = LoggerFactory.getLogger(TcpServer.class.getName());
@@ -48,52 +45,32 @@ public class TcpServer extends AbstractVerticle {
 
             SocketAddress socketAddress = socket.remoteAddress();
 
-            logger.info("get connection  remote address is "+socketAddress.host()+" port="+socketAddress.port() +"handler id is "+handlerID);
+            logger.info("get connection remote address={},port={},handlerId={}", socketAddress.host(), socketAddress.port(), handlerID);
 
-            RecordParser parser = RecordParser.newFixed(8, null);
-
-            parser.setOutput(new Handler<Buffer>() {
-                int cmd = -1;
-                int bodyLength = -1;
-                int count =0;
-                @Override
-                public void handle(Buffer buffer) {
-                    count++;
-                    if (bodyLength == -1) {
-                        cmd = IntUtil.byteArr2Int(buffer.getBytes(0, 4));
-                        if (CmdEnum.checkCmd(cmd)) {
-                            bodyLength = IntUtil.byteArr2Int(buffer.getBytes(4, 8));
-                            parser.fixedSizeMode(bodyLength);
-                        } else {
-                            bodyLength = -2;
-                            logger.error("Illegal CMD code remote ip is:{},handlerId:{}", socketAddress.host(),handlerID);
-                        }
-                    } else if (bodyLength == -2) {
-                        logger.error("Illegal CMD code remote ip is:{}, body is :{}, handlerId:{}", socketAddress.host(), buffer.toString(),handlerID);
-                    } else {
-                        try {
-                            JsonObject msg = new JsonObject(buffer);
-                            msg.put("cmd",cmd);
-                            msg.put("handerId",handlerID);
-                            logger.info("The body of the received message is {}",msg.toString());
-                            bodyLength=-1;
-                            parser.fixedSizeMode(8);
-                            dealMsg(msg);
-                        } catch (Exception e) {
-                            logger.error("Illegal message body body is :{}", buffer.toString());
-                        }
-                    }
+            socket.handler(buffer -> {
+                int cmd = IntUtil.byteArr2Int(buffer.getBytes(0, 4));
+                if (CmdEnum.checkCmd(cmd)) {
+                    int bodyLength = IntUtil.byteArr2Int(buffer.getBytes(4, 8));
+                    JsonObject body = buffer.getBuffer(8, 8 + bodyLength).toJsonObject();
+                    body.put("cmd", cmd);
+                    body.put("handlerId", handlerID);
+                    dealMsg(body);
+                } else {
+                    //TODO cmd错误 记录错误次数，如果超过了错误次数 关闭该链接，也可以将此ip加入黑名单
                 }
             });
-            //读取数据
-            socket.handler(parser);
-            socket.exceptionHandler(v ->{
-                logger.info("socket 被异常关闭了");
 
-                });
-            socket.closeHandler(v ->{
-                logger.info("socket 被关闭了");
-               });
+            socket.exceptionHandler(v -> {
+                logger.info("Socket is closed abnormally; handlerId={},remontIp={},port={}", handlerID, socketAddress.host(), socketAddress.port());
+                //执行登出
+                this.delSocket(handlerID);
+
+            });
+            socket.closeHandler(v -> {
+                logger.info("Socket is closed; handlerId={},remontIp={},port={}", handlerID, socketAddress.host(), socketAddress.port());
+                //执行登出
+                this.delSocket(handlerID);
+            });
         });
         server.listen(res -> {
             if (res.succeeded()) {
@@ -105,24 +82,72 @@ public class TcpServer extends AbstractVerticle {
     }
 
     private void delSocket(String handlerId) {
-        DeliveryOptions option = new DeliveryOptions();
-        option.addHeader("action", SocketSession.Action.REMOVE_USER_SOCKET);
-        option.setSendTimeout(3000);
         JsonObject param = new JsonObject();
         param.put("handlerId", handlerId);
-        eb.send(SocketSession.class.getName(), param, res -> {
-            if (res.succeeded()) {
-                logger.info("remove handlerId  handlerId:{} result:{}", handlerId, res.result().body());
-            } else {
-                logger.info("remove handlerId fail  handlerId:{}  cause:{}", handlerId, res.cause());
-            }
-        });
+        Future<Response> responseFuture = EventBusUtil.ebSend(param, SocketSession.class.getName(), SocketSession.Action.REMOVE_USER_SOCKET, eb);
+        responseFuture.setHandler(res -> logger.info("socket close remove session  handlerId:{} result:{}", handlerId, res.result()));
     }
 
-    private void dealMsg(JsonObject msg) {
-        DeliveryOptions options = new DeliveryOptions();
-        options.setSendTimeout(3000);
-        options.addHeader("action", MessageVerticle.Action.DEAL_CLIENT_MSG);
-        eb.send(MessageVerticle.class.getName(),msg,options);
+
+    public void dealMsg(JsonObject msg) {
+        Integer cmd = msg.getInteger("cmd");
+        CmdEnum cmdEnum = CmdEnum.getCmdBycode(cmd);
+        if (cmdEnum != null) {
+            switch (cmdEnum) {
+                case LOGIN:
+                    logger.info("socket login param={}", msg.toString());
+                    Future<Response> loginResponse = EventBusUtil.ebSend(msg, SocketSession.class.getName(), SocketSession.Action.SET_USER_SOCKET, eb);
+                    loginResponse.setHandler(res -> {
+                        logger.info("socket login param={},result={}", msg.toString(), res.result());
+                        eb.send(msg.getString("handlerId"), Json.encodeToBuffer(res.result()));
+                    });
+                    break;
+                case LOGOUT:
+                    logger.info("socket loginout param={}", msg.toString());
+                    Future<Response> loginOutResponse = EventBusUtil.ebSend(msg, SocketSession.class.getName(), SocketSession.Action.REMOVE_USER_SOCKET, eb);
+                    loginOutResponse.setHandler(res -> {
+                        logger.info("socket loginout param={},result={}", msg.toString(), res.result());
+                        eb.send(msg.getString("handlerId"), Json.encodeToBuffer(res.result()));
+                    });
+                    break;
+                case HEARTBEAT:
+                    logger.info("Heartbeat Report msg={}", msg.toString());
+                    eb.send(msg.getString("handlerId"), Json.encodeToBuffer(Response.success()));
+                    break;
+                case SEND:
+                    Integer fromId = msg.getInteger("fromId");
+                    Integer toId = msg.getInteger("toId");
+                    String content = msg.getString("content");
+                    String fromHandlerId = msg.getString("handlerId");
+                    logger.info("Chat message msg={}", msg.toString());
+                    Future<Response> responseFuture = EventBusUtil.ebSend(new JsonObject().put("userId", toId), SocketSession.class.getName(), SocketSession.Action.GET_HANDLERID_BY_USERID, eb);
+                    responseFuture.setHandler(res -> {
+                        if (res.failed()) {
+                            eb.send(fromHandlerId, Json.encodeToBuffer(Response.fail(RestCode.SYSTEM_ERROR)));
+                        } else {
+                            Response response = res.result();
+                            if (response.isSuccess) {
+                                String toHandlerId = response.getData().toString();
+                                ChatEntity chatEntity = new ChatEntity();
+                                chatEntity.setFromId(fromId);
+                                chatEntity.setToId(toId);
+                                chatEntity.setContent(content);
+                                eb.send(toHandlerId, Json.encodeToBuffer(chatEntity));
+                                //TODO 需要消息回执确认,暂时先采用不可靠的传送方式
+                                eb.send(fromHandlerId, Json.encodeToBuffer(Response.success()));
+                            } else {
+                                eb.send(fromHandlerId, Json.encodeToBuffer(Response.fail(RestCode.FRIENDS_ARE_NOT_ONLINE)));
+                            }
+                        }
+                    });
+                    break;
+                default:
+                    break;
+            }
+        } else {
+            logger.error("cmd is error; cmd=" + cmd);
+        }
+
     }
+
 }

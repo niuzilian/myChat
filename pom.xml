@@ -16,7 +16,7 @@
     </modules>
     <properties>
         <vertx-version>3.4.2</vertx-version>
-        <start.verticle>com.niu.start.StartVerticle</start.verticle>
+        <start.verticle>StartVerticle</start.verticle>
     </properties>
 
     <dependencies>
