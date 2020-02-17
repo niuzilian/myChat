@@ -1,4 +1,5 @@
 {
   "tcp.port":8082,
-  "tcp.idleTimeout":3600
+  "tcp.idleTimeout":3600,
+  "im.http.port":8080
 }

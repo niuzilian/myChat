@@ -1,4 +1,18 @@
 {
   "tcp.port":8082,
-  "tcp.idleTimeout":3600
+  "tcp.idleTimeout":3600,
+  "im.http.port":8080,
+  "mysql":{
+
+    "gjAssert":{
+      "url":"jdbc:mysql://172.22.0.24:3306/gj_asset",
+      "driver_class":"com.mysql.cj.jdbc.Driver",
+      "user":"root",
+      "password":"Sqzl1234",
+      "max_pool_size":15,
+      "initial_pool_size":3,
+      "min_pool_size":2,
+      "max_idle_time":60
+    }
+  }
 }

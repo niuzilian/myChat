@@ -6,9 +6,7 @@ import com.niu.common.util.IntUtil;
 import com.niu.common.web.Response;
 import com.niu.common.web.RestCode;
 import com.niu.im.EventBusUtil;
-import com.niu.im.service.SocketSession;
 import io.vertx.core.AbstractVerticle;
-import io.vertx.core.Future;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
@@ -84,8 +82,9 @@ public class TcpServer extends AbstractVerticle {
     private void delSocket(String handlerId) {
         JsonObject param = new JsonObject();
         param.put("handlerId", handlerId);
-        Future<Response> responseFuture = EventBusUtil.ebSend(param, SocketSession.class.getName(), SocketSession.Action.REMOVE_USER_SOCKET, eb);
-        responseFuture.setHandler(res -> logger.info("socket close remove session  handlerId:{} result:{}", handlerId, res.result()));
+        eb.send(SocketSession.class.getName(),param,EventBusUtil.getDeliveryOptions(SocketSession.Action.REMOVE_USER_SOCKET),res->{
+            logger.info("socket close remove session  handlerId:{} result:{}", handlerId, res.result());
+        });
     }
 
 
@@ -96,23 +95,23 @@ public class TcpServer extends AbstractVerticle {
             switch (cmdEnum) {
                 case LOGIN:
                     logger.info("socket login param={}", msg.toString());
-                    Future<Response> loginResponse = EventBusUtil.ebSend(msg, SocketSession.class.getName(), SocketSession.Action.SET_USER_SOCKET, eb);
-                    loginResponse.setHandler(res -> {
-                        logger.info("socket login param={},result={}", msg.toString(), res.result());
-                        eb.send(msg.getString("handlerId"), Json.encodeToBuffer(res.result()));
+                    eb.<JsonObject>send(SocketSession.class.getName(),msg,EventBusUtil.getDeliveryOptions(SocketSession.Action.SET_USER_SOCKET),res->{
+                        JsonObject body = res.result().body();
+                        logger.info("socket login param={},result={}", msg.toString(), body.toString());
+                        eb.send(msg.getString("handlerId"), Json.encodeToBuffer(body));
                     });
                     break;
                 case LOGOUT:
                     logger.info("socket loginout param={}", msg.toString());
-                    Future<Response> loginOutResponse = EventBusUtil.ebSend(msg, SocketSession.class.getName(), SocketSession.Action.REMOVE_USER_SOCKET, eb);
-                    loginOutResponse.setHandler(res -> {
-                        logger.info("socket loginout param={},result={}", msg.toString(), res.result());
-                        eb.send(msg.getString("handlerId"), Json.encodeToBuffer(res.result()));
+                    eb.<JsonObject>send(SocketSession.class.getName(),msg,EventBusUtil.getDeliveryOptions(SocketSession.Action.REMOVE_USER_SOCKET),res->{
+                        JsonObject body = res.result().body();
+                        logger.info("socket loginout param={},result={}", msg.toString(), body.toString());
+                        eb.send(msg.getString("handlerId"), Json.encodeToBuffer(body));
                     });
                     break;
                 case HEARTBEAT:
                     logger.info("Heartbeat Report msg={}", msg.toString());
-                    eb.send(msg.getString("handlerId"), Json.encodeToBuffer(Response.success()));
+                    eb.<JsonObject>send(msg.getString("handlerId"), Json.encodeToBuffer(Response.success()));
                     break;
                 case SEND:
                     Integer fromId = msg.getInteger("fromId");
@@ -120,12 +119,12 @@ public class TcpServer extends AbstractVerticle {
                     String content = msg.getString("content");
                     String fromHandlerId = msg.getString("handlerId");
                     logger.info("Chat message msg={}", msg.toString());
-                    Future<Response> responseFuture = EventBusUtil.ebSend(new JsonObject().put("userId", toId), SocketSession.class.getName(), SocketSession.Action.GET_HANDLERID_BY_USERID, eb);
-                    responseFuture.setHandler(res -> {
+                    eb.<JsonObject>send(SocketSession.class.getName(),new JsonObject().put("userId", toId),EventBusUtil.getDeliveryOptions(SocketSession.Action.GET_HANDLERID_BY_USERID),res->{
                         if (res.failed()) {
                             eb.send(fromHandlerId, Json.encodeToBuffer(Response.fail(RestCode.SYSTEM_ERROR)));
                         } else {
-                            Response response = res.result();
+                            JsonObject body = res.result().body();
+                            Response response = body.mapTo(Response.class);
                             if (response.isSuccess) {
                                 String toHandlerId = response.getData().toString();
                                 ChatEntity chatEntity = new ChatEntity();

@@ -29,7 +29,15 @@ public enum RestCode {
 
     LOGIN_FAILED(1111,"登录失败"),
 
-    FRIENDS_ARE_NOT_ONLINE(1112,"好友未在线");
+    WRONG_NAME_OR_PASSWORD(1112,"账号或者密码错误"),
+
+    USER_DOES_NOT_EXIST(1113,"账号不存在"),
+
+    PASSWORD_ERROR(1114,"密码错误"),
+
+    FRIENDS_ARE_NOT_ONLINE(1115,"好友未在线");
+
+
 
 
 
